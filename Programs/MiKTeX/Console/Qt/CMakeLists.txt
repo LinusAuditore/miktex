@@ -63,9 +63,7 @@ if(MIKTEX_NATIVE_WINDOWS)
     )
 endif()
 
-if(MIKTEX_MACOS_BUNDLE)
-    # FIXME
-    set(MACOSX_BUNDLE_ICON_FILE miktex-console.icns)
+if(APPLE)
     list(APPEND console_sources
         ${MIKTEX_CONSOLE_ICNS}
     )
@@ -215,14 +213,35 @@ endif()
 add_executable(${MIKTEX_PROG_NAME_CONSOLE} WIN32 MACOSX_BUNDLE ${sources})
 set_property(TARGET ${MIKTEX_PROG_NAME_CONSOLE} PROPERTY FOLDER ${MIKTEX_CURRENT_FOLDER})
 target_link_libraries(${MIKTEX_PROG_NAME_CONSOLE} ${libs})  
-if(MIKTEX_MACOS_BUNDLE)
-    set_target_properties(${MIKTEX_PROG_NAME_CONSOLE}
-        PROPERTIES
-        OUTPUT_NAME ${MIKTEX_MACOS_BUNDLE_NAME}
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/mac/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME ${MIKTEX_MACOS_BUNDLE_NAME}
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${MIKTEX_MAJOR_VERSION}.${MIKTEX_MINOR_VERSION}.${MIKTEX_PATCH_VERSION}"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "org.miktex.console"
+if(APPLE)
+    if(MIKTEX_MACOS_BUNDLE)
+        set(miktex_console_output_name ${MIKTEX_MACOS_BUNDLE_NAME})
+        set_target_properties(${MIKTEX_PROG_NAME_CONSOLE}
+            PROPERTIES
+            OUTPUT_NAME ${MIKTEX_MACOS_BUNDLE_NAME}
+        )
+    else()
+        set(miktex_console_output_name ${MIKTEX_PROG_NAME_CONSOLE})
+    endif()
+    # configure the Info.plist ourselves: the CMake-generate-time
+    # bundle plist is not reliably rewritten on incremental builds
+    set(MACOSX_BUNDLE_EXECUTABLE_NAME ${miktex_console_output_name})
+    set(MACOSX_BUNDLE_BUNDLE_NAME ${MIKTEX_MACOS_BUNDLE_NAME})
+    set(MACOSX_BUNDLE_ICON_FILE miktex-console.icns)
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER org.miktex.console)
+    set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${MIKTEX_MAJOR_VERSION}.${MIKTEX_MINOR_VERSION}.${MIKTEX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_BUNDLE_VERSION "${MIKTEX_MAJOR_VERSION}.${MIKTEX_MINOR_VERSION}.${MIKTEX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_LONG_VERSION_STRING "${MIKTEX_MACOS_BUNDLE_NAME} ${MIKTEX_MAJOR_VERSION}.${MIKTeX_MINOR_VERSION}.${MIKTeX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_INFO_STRING "${MIKTEX_MACOS_BUNDLE_NAME} ${MIKTEX_MAJOR_VERSION}.${MIKTeX_MINOR_VERSION}.${MIKTeX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_COPYRIGHT "Copyright (C) 2006-2026 Christian Schenk")
+    configure_file(
+        mac/Info.plist.in
+        ${CMAKE_CURRENT_BINARY_DIR}/miktex-console-Info.plist
+    )
+    add_custom_command(TARGET ${MIKTEX_PROG_NAME_CONSOLE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_BINARY_DIR}/miktex-console-Info.plist
+            $<TARGET_FILE_DIR:${MIKTEX_PROG_NAME_CONSOLE}>/../Info.plist
     )
 endif()
 if(UNIX AND NOT APPLE)

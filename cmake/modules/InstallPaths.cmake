@@ -6,8 +6,8 @@
 ## unlimited permission to copy and/or distribute it, with or
 ## without modifications, as long as this notice is preserved.
 
+set(MIKTEX_MACOS_BUNDLE_NAME "MiKTeX Console")
 if(MIKTEX_MACOS_BUNDLE)
-    set(MIKTEX_MACOS_BUNDLE_NAME "MiKTeX Console")
     set(MIKTEX_MACOS_BUNDLE_DIR "${MIKTEX_MACOS_BUNDLE_NAME}.app/Contents")
 endif()
 
