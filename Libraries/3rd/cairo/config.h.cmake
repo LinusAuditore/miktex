@@ -2,6 +2,8 @@
 
 #cmakedefine CAIRO_HAS_INTERPRETER 1
 
+#cmakedefine CAIRO_HAS_PTHREAD 1
+
 #cmakedefine HAS_PIXMAN_GLYPHS 1
 
 #cmakedefine HAVE_D2D1_3_H 1
@@ -27,6 +29,8 @@
 #cmakedefine HAVE_SIGNAL_H 1
 
 #cmakedefine HAVE_STDINT_H 1
+
+#cmakedefine HAVE_CTIME_R 1
 
 #cmakedefine HAVE_STRNDUP
 

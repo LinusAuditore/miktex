@@ -15,6 +15,10 @@ set(proj_source_dir ${CMAKE_CURRENT_SOURCE_DIR})
 
 check_include_files(d2d1_3.h HAVE_D2D1_3_H)
 
+if(MIKTEX_UNIX_ALIKE)
+    check_function_exists(ctime_r HAVE_CTIME_R)
+endif()
+
 set(HAS_PIXMAN_GLYPHS TRUE)
 
 set(HAVE_UINT64_T TRUE)
