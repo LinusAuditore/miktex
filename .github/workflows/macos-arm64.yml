@@ -5,6 +5,14 @@ on:
     branches: [mac_port]
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+# a newer push to the branch supersedes a running build
+concurrency:
+  group: macos-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build-dmg:
     # arm64 (Apple Silicon) macOS runner
@@ -80,6 +88,7 @@ jobs:
           name: ci-diagnostics
           path: build/sandbox/miktex/log/
           if-no-files-found: ignore
+          retention-days: 7
 
       - name: Verify
         # checks the final dmg: signature, arm64 only, no references outside
@@ -93,3 +102,4 @@ jobs:
           name: miktex-darwin-arm64-dmg
           path: build/*.dmg
           if-no-files-found: error
+          retention-days: 14
