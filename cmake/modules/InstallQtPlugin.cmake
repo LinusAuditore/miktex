@@ -5,6 +5,10 @@
 
 macro(install_qt_plugin _qt_plugin_name _qt_plugins_var)
     get_target_property(_qt_plugin_path "${_qt_plugin_name}" LOCATION)
+    # the plugin may be a relative symlink into the Homebrew Cellar;
+    # file(INSTALL) preserves symlinks, which break once relocated into
+    # the application bundle, so install the resolved file instead
+    get_filename_component(_qt_plugin_path "${_qt_plugin_path}" REALPATH)
     if(EXISTS "${_qt_plugin_path}")
         get_filename_component(_qt_plugin_file "${_qt_plugin_path}" NAME)
         get_filename_component(_qt_plugin_type "${_qt_plugin_path}" PATH)
