@@ -64,6 +64,10 @@ bool macFileSystemWatcher::Start()
     {
         return false;
     }
+    {
+        unique_lock l(runLoopMutex);
+        stopRequested = false;
+    }
     context.version = 0;
     context.info = this;
     context.retain = nullptr;
@@ -100,9 +104,11 @@ bool macFileSystemWatcher::Stop()
         return false;
     }
     unique_lock l(runLoopMutex);
+    stopRequested = true;
     if (runLoopRunning)
     {
         CFRunLoopStop(runLoop);
+        CFRunLoopWakeUp(runLoop);
     }
     l.unlock();
     StopThreads();
@@ -126,7 +132,21 @@ void macFileSystemWatcher::WatchDirectories()
     runLoopRunning = true;
     l.unlock();
     runLoopCondition.notify_all();
-    CFRunLoopRun();
+    // CFRunLoopStop() is a no-op on a run loop that is not running, so
+    // the run loop is re-entered with a timeout until Stop() has been
+    // seen;  this avoids a deadlock when Stop() races with thread
+    // start-up
+    for (;;)
+    {
+        {
+            unique_lock l2(runLoopMutex);
+            if (stopRequested)
+            {
+                break;
+            }
+        }
+        CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.5, false);
+    }
     l.lock();
     runLoopRunning = false;
     l.unlock();

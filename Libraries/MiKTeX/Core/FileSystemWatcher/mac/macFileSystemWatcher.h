@@ -47,6 +47,7 @@ private:
     std::mutex runLoopMutex;
     CFRunLoopRef runLoop = nullptr;
     bool runLoopRunning = false;
+    bool stopRequested = false;
     FSEventStreamRef stream = nullptr;
 };
 
