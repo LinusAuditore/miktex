@@ -45,26 +45,29 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Package
+        # guard against a hanging Finder layout script or hdiutil
+        timeout-minutes: 30
         run: |
           echo "=== tool versions ==="
-          brew list --versions cmake qt | cat
+          brew list --versions cmake qt qtbase | cat
           cmake --version | head -1
-          echo "=== standalone install probe ==="
-          cmake --install build --prefix /tmp/install-probe > /tmp/install-probe.log 2>&1 || true
-          grep -iE "error|cannot find" /tmp/install-probe.log | head -10 || true
-          find /tmp/install-probe -path "*PlugIns*" -name "*.dylib" || echo "NO PLUGINS INSTALLED"
+          echo "=== Qt plugin link layout ==="
+          # a fresh Homebrew install links the plugins as per-file symlinks
+          # into the Cellar (see cmake/modules/InstallQtPlugin.cmake)
+          ls -ld "$(brew --prefix)/share/qt/plugins/platforms"
+          ls -l "$(brew --prefix)/share/qt/plugins/platforms/"
           echo "=== cpack ==="
           cd build
           cpack -G DragNDrop
 
-      - name: Upload diagnostics on failure
-        if: failure()
+      # always: the logs of a successful run show whether the sandbox tools
+      # raced while creating the file name database
+      - name: Upload sandbox logs
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: ci-diagnostics
-          path: |
-            /tmp/install-probe.log
-            build/sandbox/miktex/log/
+          path: build/sandbox/miktex/log/
           if-no-files-found: ignore
 
       - name: Verify
