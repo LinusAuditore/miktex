@@ -102,7 +102,8 @@ bool macFileSystemWatcher::Stop()
     unique_lock l(runLoopMutex);
     if (runLoopRunning)
     {
-        CFRunLoopStop(runLoop);
+        CFRunLoopSourceSignal(stopSource);
+        CFRunLoopWakeUp(runLoop);
     }
     l.unlock();
     StopThreads();
@@ -123,17 +124,36 @@ void macFileSystemWatcher::WatchDirectories()
     {
         MIKTEX_FATAL_ERROR("FSEventStreamStart() failure");
     }
+    // CFRunLoopStop() is a no-op on a run loop that is not running yet;
+    // Stop() signals this source instead, which stops the run loop as
+    // soon as it runs
+    CFRunLoopSourceContext sourceContext = {};
+    sourceContext.perform = StopRunLoop;
+    stopSource = CFRunLoopSourceCreate(nullptr, 0, &sourceContext);
+    if (stopSource == nullptr)
+    {
+        MIKTEX_FATAL_ERROR("CFRunLoopSourceCreate() failure");
+    }
+    CFRunLoopAddSource(runLoop, stopSource, kCFRunLoopDefaultMode);
     runLoopRunning = true;
     l.unlock();
     runLoopCondition.notify_all();
     CFRunLoopRun();
     l.lock();
     runLoopRunning = false;
+    CFRunLoopSourceInvalidate(stopSource);
+    CFRelease(stopSource);
+    stopSource = nullptr;
     l.unlock();
     runLoopCondition.notify_all();
     FSEventStreamStop(stream);
     FSEventStreamInvalidate(stream);
     runLoop = nullptr;
+}
+
+void macFileSystemWatcher::StopRunLoop(void* info)
+{
+    CFRunLoopStop(CFRunLoopGetCurrent());
 }
 
 void macFileSystemWatcher::Callback(ConstFSEventStreamRef streamRef, void* clientCallBackInfo, size_t numEvents, void* eventPaths, const FSEventStreamEventFlags* eventFlags, const FSEventStreamEventId* eventIds)

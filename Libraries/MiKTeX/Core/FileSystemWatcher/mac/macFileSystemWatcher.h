@@ -39,6 +39,7 @@ private:
     void MIKTEXTHISCALL WatchDirectories() override;
     void HandleDirectoryChange(const char* path, FSEventStreamEventFlags flags);
 
+    static void StopRunLoop(void* info);
     static void Callback(ConstFSEventStreamRef streamRef, void* clientCallBackInfo, size_t numEvents, void* eventPaths, const FSEventStreamEventFlags* eventFlags, const FSEventStreamEventId* eventIds);
 
     FSEventStreamContext context;
@@ -47,6 +48,7 @@ private:
     std::mutex runLoopMutex;
     CFRunLoopRef runLoop = nullptr;
     bool runLoopRunning = false;
+    CFRunLoopSourceRef stopSource = nullptr;
     FSEventStreamRef stream = nullptr;
 };
 
