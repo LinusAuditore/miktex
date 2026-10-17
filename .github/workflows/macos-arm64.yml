@@ -64,6 +64,7 @@ jobs:
           name: ci-diagnostics
           path: |
             /tmp/install-probe.log
+            build/sandbox/miktex/log/
           if-no-files-found: ignore
 
       - name: Verify
