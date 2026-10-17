@@ -32,6 +32,8 @@
 #include <miktex/Core/FileStream>
 #include <miktex/Util/PathName>
 #include <miktex/Core/Paths>
+#include <miktex/Core/Process>
+#include <miktex/Core/TemporaryFile>
 #include <miktex/Util/Tokenizer>
 
 #include "internal.h"
@@ -488,7 +490,30 @@ void SessionImpl::SetConfigValue(const std::string& sectionName, const string& v
 
   cfg->ClearValue(sectionName, valueName);
   cfg->PutValue(sectionName, valueName, value.GetString());
+#if defined(MIKTEX_WINDOWS)
   cfg->Write(pathConfigFile);
+#else
+  if (haveConfigFile && File::IsSymbolicLink(pathConfigFile))
+  {
+    cfg->Write(pathConfigFile);
+  }
+  else
+  {
+    // other processes may be reading the file: write a temporary file of
+    // our own and rename it, so that readers see either the old or the
+    // new contents, never a partially written file
+    PathName tmpConfigFile(pathConfigFile);
+    tmpConfigFile.AppendExtension(fmt::format(".{}.tmp", Process::GetCurrentProcess()->GetSystemId()));
+    unique_ptr<TemporaryFile> tmpFile = TemporaryFile::Create(tmpConfigFile);
+    cfg->Write(tmpConfigFile);
+    if (haveConfigFile)
+    {
+      File::SetNativeAttributes(tmpConfigFile, File::GetNativeAttributes(pathConfigFile));
+    }
+    File::Move(tmpConfigFile, pathConfigFile);
+    tmpFile->Keep();
+  }
+#endif
   if (!Fndb::FileExists(pathConfigFile))
   {
     Fndb::Add({ { pathConfigFile } });
