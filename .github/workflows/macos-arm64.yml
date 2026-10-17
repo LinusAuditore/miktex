@@ -10,21 +10,23 @@ jobs:
     # arm64 (Apple Silicon) macOS runner
     runs-on: macos-15
     timeout-minutes: 120
+    env:
+      # reproducible toolchain: the formula versions of the runner image's
+      # Homebrew snapshot and the image's Xcode, no implicit upgrades
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Install dependencies
         run: |
-          # refresh formulae: the runner image snapshot is older than the
-          # development environment; cmake 4.4.3 (preinstalled on the image)
-          # has a path-with-space bug in BundleUtilities, so upgrade it too
-          brew update
-          brew upgrade cmake
           brew install pkg-config bison gettext boost \
             apr apr-util freetype fribidi gmp graphite2 hunspell jpeg-turbo \
             libpng libzzip log4cxx mpfi mpfr pixman popt uriparser xz zlib \
             bzip2 expat curl icu4c openssl@3 cairo fontconfig gd harfbuzz qt
+          brew list --versions cmake qt qtbase openssl@3 openssl@4 curl | cat
 
       - name: Configure
         run: |
@@ -34,6 +36,7 @@ jobs:
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
             -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
             -DCMAKE_PREFIX_PATH="$BREW;$BREW/opt/icu4c;$BREW/opt/openssl@3;$BREW/opt/bzip2;$BREW/opt/expat;$BREW/opt/curl;$BREW/opt/zlib" \
+            -DOPENSSL_ROOT_DIR="$BREW/opt/openssl@3" \
             -DMIKTEX_MACOS_BUNDLE=TRUE \
             -DWITH_UI_QT=TRUE
 
