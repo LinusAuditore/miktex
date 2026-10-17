@@ -2391,7 +2391,7 @@ if(WITH_BOOTSTRAPPING)
             OUTPUT
                 ${CMAKE_CURRENT_BINARY_DIR}/${f}
             COMMAND
-                ${CURL_EXECUTABLE} -o ${CMAKE_CURRENT_BINARY_DIR}/${f} -fsSL ${remote_repository}${f}
+                ${CURL_EXECUTABLE} -o ${CMAKE_CURRENT_BINARY_DIR}/${f} -fsSL --retry 5 --retry-all-errors ${remote_repository}${f}
         )
         list(APPEND generated_bootstrapping_files ${CMAKE_CURRENT_BINARY_DIR}/${f})
     endforeach()
