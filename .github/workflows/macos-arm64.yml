@@ -82,11 +82,10 @@ jobs:
           if-no-files-found: ignore
 
       - name: Verify
-        run: |
-          app=$(ls -d build/_CPack_Packages/Darwin/DragNDrop/miktex-*/MiKTeX\ Console.app)
-          file "$app/Contents/MacOS/MiKTeX Console"
-          codesign --verify --strict "$app"
-          shasum -a 256 build/*.dmg
+        # checks the final dmg: signature, arm64 only, no references outside
+        # the bundle; reports the effective minimum macOS version
+        timeout-minutes: 15
+        run: bash macos-port/ci/verify-dmg.sh build/miktex-*-darwin-arm64.dmg
 
       - name: Upload dmg
         uses: actions/upload-artifact@v4
