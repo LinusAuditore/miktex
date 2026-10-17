@@ -33,6 +33,7 @@
 #include <miktex/Core/Directory>
 #include <miktex/Core/FileStream>
 #include <miktex/Core/Paths>
+#include <miktex/Core/Process>
 #include <miktex/Core/TemporaryFile>
 
 #include <miktex/Trace/Trace>
@@ -447,25 +448,38 @@ bool FndbManager::Create(const PathName& fndbPath, const PathName& rootPath, ICr
     }
     // </fixme>
     
+    // other processes may be creating the same fndb concurrently: write
+    // to a temporary file of our own (in the same directory, so that it
+    // can be renamed)
     PathName tmpFndbPath(fndbPath);
-    tmpFndbPath.AppendExtension(".tmp");
+    tmpFndbPath.AppendExtension(fmt::format(".{}.tmp", Process::GetCurrentProcess()->GetSystemId()));
     unique_ptr<TemporaryFile> tmpFndbFile = TemporaryFile::Create(tmpFndbPath);
     FileStream streamFndb;
     streamFndb.Attach(File::Open(tmpFndbPath, FileMode::Create, FileAccess::Write, false));
     streamFndb.Write(reinterpret_cast<const char*>(GetMemPointer()), GetMemTop());
     streamFndb.Close();
+#if defined(MIKTEX_WINDOWS)
     if (File::Exists(fndbPath))
     {
       File::Delete(fndbPath, { FileDeleteOption::TryHard });
     }
+#endif
+    // on Unix, rename() atomically replaces an existing fndb
     File::Move(tmpFndbPath, fndbPath);
     tmpFndbFile->Keep();
 
     PathName changeFile = fndbPath;
     changeFile.SetExtension(MIKTEX_FNDB_CHANGE_FILE_SUFFIX);
-    if (File::Exists(changeFile))
+    try
     {
-      File::Delete(changeFile);
+      if (File::Exists(changeFile))
+      {
+        File::Delete(changeFile);
+      }
+    }
+    catch (const FileNotFoundException&)
+    {
+      // deleted by a concurrent process
     }
     trace_fndb->WriteLine("core", T_("fndb creation completed"));
     SESSION_IMPL()->RecordMaintenance();
