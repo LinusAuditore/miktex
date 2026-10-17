@@ -16,7 +16,7 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install pkg-config bison \
+          brew install pkg-config bison gettext boost \
             apr apr-util freetype fribidi gmp graphite2 hunspell jpeg-turbo \
             libpng libzzip log4cxx mpfi mpfr pixman popt uriparser xz zlib \
             bzip2 expat curl icu4c openssl@3 cairo fontconfig gd harfbuzz qt
