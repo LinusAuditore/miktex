@@ -1898,6 +1898,14 @@ if(USE_SYSTEM_HARFBUZZ)
         IMPORTED_LOCATION "${HARFBUZZ_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${HARFBUZZ_INCLUDE_DIRS}"
     )
+    # the hb-subset API ships as a separate library in some harfbuzz
+    # distributions (e.g. Homebrew)
+    find_library(HARFBUZZ_SUBSET_LIBRARY NAMES harfbuzz-subset)
+    if(HARFBUZZ_SUBSET_LIBRARY)
+        set_property(TARGET MiKTeX::Imported::HARFBUZZ APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES "${HARFBUZZ_SUBSET_LIBRARY}"
+        )
+    endif()
 else()
     add_subdirectory(${MIKTEX_REL_HARFBUZZ_DIR})
 endif()
