@@ -63,9 +63,7 @@ if(MIKTEX_NATIVE_WINDOWS)
     )
 endif()
 
-if(MIKTEX_MACOS_BUNDLE)
-    # FIXME
-    set(MACOSX_BUNDLE_ICON_FILE miktex-console.icns)
+if(APPLE)
     list(APPEND console_sources
         ${MIKTEX_CONSOLE_ICNS}
     )
@@ -215,14 +213,35 @@ endif()
 add_executable(${MIKTEX_PROG_NAME_CONSOLE} WIN32 MACOSX_BUNDLE ${sources})
 set_property(TARGET ${MIKTEX_PROG_NAME_CONSOLE} PROPERTY FOLDER ${MIKTEX_CURRENT_FOLDER})
 target_link_libraries(${MIKTEX_PROG_NAME_CONSOLE} ${libs})  
-if(MIKTEX_MACOS_BUNDLE)
-    set_target_properties(${MIKTEX_PROG_NAME_CONSOLE}
-        PROPERTIES
-        OUTPUT_NAME ${MIKTEX_MACOS_BUNDLE_NAME}
-        MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_SOURCE_DIR}/mac/Info.plist.in"
-        MACOSX_BUNDLE_BUNDLE_NAME ${MIKTEX_MACOS_BUNDLE_NAME}
-        MACOSX_BUNDLE_SHORT_VERSION_STRING "${MIKTEX_MAJOR_VERSION}.${MIKTEX_MINOR_VERSION}.${MIKTEX_PATCH_VERSION}"
-        MACOSX_BUNDLE_GUI_IDENTIFIER "org.miktex.console"
+if(APPLE)
+    if(MIKTEX_MACOS_BUNDLE)
+        set(miktex_console_output_name ${MIKTEX_MACOS_BUNDLE_NAME})
+        set_target_properties(${MIKTEX_PROG_NAME_CONSOLE}
+            PROPERTIES
+            OUTPUT_NAME ${MIKTEX_MACOS_BUNDLE_NAME}
+        )
+    else()
+        set(miktex_console_output_name ${MIKTEX_PROG_NAME_CONSOLE})
+    endif()
+    # configure the Info.plist ourselves: the CMake-generate-time
+    # bundle plist is not reliably rewritten on incremental builds
+    set(MACOSX_BUNDLE_EXECUTABLE_NAME ${miktex_console_output_name})
+    set(MACOSX_BUNDLE_BUNDLE_NAME ${MIKTEX_MACOS_BUNDLE_NAME})
+    set(MACOSX_BUNDLE_ICON_FILE miktex-console.icns)
+    set(MACOSX_BUNDLE_GUI_IDENTIFIER org.miktex.console)
+    set(MACOSX_BUNDLE_SHORT_VERSION_STRING "${MIKTEX_MAJOR_VERSION}.${MIKTEX_MINOR_VERSION}.${MIKTEX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_BUNDLE_VERSION "${MIKTEX_MAJOR_VERSION}.${MIKTEX_MINOR_VERSION}.${MIKTEX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_LONG_VERSION_STRING "${MIKTEX_MACOS_BUNDLE_NAME} ${MIKTEX_MAJOR_VERSION}.${MIKTeX_MINOR_VERSION}.${MIKTeX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_INFO_STRING "${MIKTEX_MACOS_BUNDLE_NAME} ${MIKTEX_MAJOR_VERSION}.${MIKTeX_MINOR_VERSION}.${MIKTeX_PATCH_VERSION}")
+    set(MACOSX_BUNDLE_COPYRIGHT "Copyright (C) 2006-2026 Christian Schenk")
+    configure_file(
+        mac/Info.plist.in
+        ${CMAKE_CURRENT_BINARY_DIR}/miktex-console-Info.plist
+    )
+    add_custom_command(TARGET ${MIKTEX_PROG_NAME_CONSOLE} POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+            ${CMAKE_CURRENT_BINARY_DIR}/miktex-console-Info.plist
+            $<TARGET_FILE_DIR:${MIKTEX_PROG_NAME_CONSOLE}>/../Info.plist
     )
 endif()
 if(UNIX AND NOT APPLE)
@@ -256,16 +275,15 @@ install(TARGETS miktex-console
 # stibizt: https://github.com/Kitware/CMake/blob/master/Source/QtDialog/CMakeLists.txt
 if(MIKTEX_MACOS_BUNDLE)
     set(fixup_exe "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${MIKTEX_MACOS_BUNDLE_DIR}/MacOS/${MIKTEX_MACOS_BUNDLE_NAME}")
-    # FIXME: non-standard icu lib dir
-    list(APPEND lib_dirs "/usr/local/opt/poppler-qt5/lib")
-    # FIXME: non-standard poppler-qt5 lib dir
-    list(APPEND lib_dirs "/usr/local/opt/icu4c/lib")
+    # directory that contains the Qt libraries; Qt6_DIR is <prefix>/lib/cmake/Qt6
+    get_filename_component(qt_library_dir "${Qt6_DIR}/../.." ABSOLUTE)
+    list(APPEND lib_dirs "${qt_library_dir}")
     list(APPEND lib_dirs "\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${MIKTEX_LIBRARY_DESTINATION_DIR}")
     install(CODE "
         include(${CMAKE_SOURCE_DIR}/cmake/modules/BundleUtilitiesOverrides.cmake)
         include(BundleUtilities)
         set(BU_CHMOD_BUNDLE_ITEMS ON)
-        fixup_bundle(\"${fixup_exe}\" \"${QT_PLUGINS}\" \"${Qt_BIN_DIR};${QT_LIBRARY_DIR};${QT_BINARY_DIR};${lib_dirs}\")
+        fixup_bundle(\"${fixup_exe}\" \"${QT_PLUGINS}\" \"${lib_dirs}\")
     ")
 endif()
 

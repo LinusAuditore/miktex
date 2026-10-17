@@ -426,6 +426,13 @@ add_executable(${MIKTEX_PREFIX}texworks WIN32 MACOSX_BUNDLE
 
 set_property(TARGET ${MIKTEX_PREFIX}texworks PROPERTY FOLDER ${MIKTEX_CURRENT_FOLDER})
 
+if(MIKTEX_MACOS_BUNDLE)
+    # inside the MiKTeX Console bundle, TeXworks is a plain executable
+    # next to the other programs (Contents/bin), so that it shares the
+    # bundle's frameworks, libraries and Qt plugins (Contents/bin/qt.conf)
+    set_target_properties(${MIKTEX_PREFIX}texworks PROPERTIES MACOSX_BUNDLE FALSE)
+endif()
+
 target_link_libraries(${MIKTEX_PREFIX}texworks ${libs})
 
 install(TARGETS ${MIKTEX_PREFIX}texworks DESTINATION ${MIKTEX_BINARY_DESTINATION_DIR})

@@ -2391,6 +2391,16 @@ if(WITH_BOOTSTRAPPING)
 endif()
 
 ###############################################################################
+## code signing (macOS)
+
+# must be the last install step: fixup_bundle rewrites load commands
+# and thereby invalidates signatures, and later install rules would
+# break the outer bundle seal again
+if(MIKTEX_MACOS_BUNDLE)
+    install(SCRIPT "${CMAKE_SOURCE_DIR}/cmake/modules/SignAppBundle.cmake")
+endif()
+
+###############################################################################
 ## packaging
 
 find_program(RPMBUILD_EXECUTABLE NAMES rpmbuild)
