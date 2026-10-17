@@ -41,8 +41,25 @@ jobs:
 
       - name: Package
         run: |
+          echo "=== tool versions ==="
+          brew list --versions cmake qt | cat
+          cmake --version | head -1
+          echo "=== standalone install probe ==="
+          cmake --install build --prefix /tmp/install-probe > /tmp/install-probe.log 2>&1 || true
+          grep -iE "error|cannot find" /tmp/install-probe.log | head -10 || true
+          find /tmp/install-probe -path "*PlugIns*" -name "*.dylib" || echo "NO PLUGINS INSTALLED"
+          echo "=== cpack ==="
           cd build
           cpack -G DragNDrop
+
+      - name: Upload diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics
+          path: |
+            /tmp/install-probe.log
+          if-no-files-found: ignore
 
       - name: Verify
         run: |
