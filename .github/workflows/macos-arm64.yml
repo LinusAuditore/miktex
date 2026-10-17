@@ -30,11 +30,16 @@ jobs:
 
       - name: Install dependencies
         run: |
-          brew install pkg-config bison gettext boost \
-            apr apr-util freetype fribidi gmp graphite2 hunspell jpeg-turbo \
+          # bundle builds use the bundled cairo, fontconfig, gd and harfbuzz,
+          # the system bison and the SDK's apr; Qt: qtbase (Concurrent, Core,
+          # Gui, PrintSupport, Widgets, Xml), qttools (LinguistTools,
+          # UiTools), qtdeclarative (Qml), qt5compat (Core5Compat)
+          brew install pkg-config gettext boost \
+            freetype fribidi gmp graphite2 hunspell jpeg-turbo \
             libpng libzzip log4cxx mpfi mpfr pixman popt uriparser xz zlib \
-            bzip2 expat curl icu4c openssl@3 cairo fontconfig gd harfbuzz qt
-          brew list --versions cmake qt qtbase openssl@3 openssl@4 curl | cat
+            bzip2 expat curl icu4c openssl@3 \
+            qtbase qttools qtdeclarative qt5compat
+          brew list --versions cmake qtbase qttools qtdeclarative qt5compat openssl@3 openssl@4 curl | cat
 
       - name: Configure
         run: |
@@ -68,7 +73,7 @@ jobs:
         timeout-minutes: 30
         run: |
           echo "=== tool versions ==="
-          brew list --versions cmake qt qtbase | cat
+          brew list --versions cmake qtbase | cat
           cmake --version | head -1
           echo "=== Qt plugin link layout ==="
           # a fresh Homebrew install links the plugins as per-file symlinks
