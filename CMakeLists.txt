@@ -157,8 +157,16 @@ if(homebrew_cellar STREQUAL "/usr/local/Cellar")
 endif()
 
 if(APPLE AND NOT MIKTEX_HOMEBREW)
-    set(MIKTEX_MACOS_BUNDLE TRUE)
+    set(default_macos_bundle TRUE)
+else()
+    set(default_macos_bundle FALSE)
 endif()
+
+option(
+    MIKTEX_MACOS_BUNDLE
+    "Install into a macOS application bundle (MiKTeX Console.app)."
+    ${default_macos_bundle}
+)
 
 ###############################################################################
 ## handle install prefix standards
