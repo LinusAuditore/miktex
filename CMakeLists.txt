@@ -1108,7 +1108,7 @@ find_package(FLEX REQUIRED)
 #not needed: find_package(PythonInterp REQUIRED)
 find_package(Threads REQUIRED)
 
-if(MIKTEX_MACOS_BUNDLE)
+if(APPLE)
     find_library(CoreFoundation CoreFoundation)
 endif()
 

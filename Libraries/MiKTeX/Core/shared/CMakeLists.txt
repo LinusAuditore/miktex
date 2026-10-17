@@ -125,7 +125,7 @@ if(MIKTEX_NATIVE_WINDOWS)
     endif()
 endif()
 
-if(MIKTEX_MACOS_BUNDLE)
+if(APPLE)
     target_link_libraries(${core_dll_name}
         PRIVATE
             "-framework CoreServices"

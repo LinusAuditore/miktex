@@ -57,7 +57,7 @@ target_link_libraries(${loc_dll_name}
     ${res_dll_name}
 )
 
-if(MIKTEX_MACOS_BUNDLE)
+if(APPLE)
   target_link_libraries(${loc_dll_name}
     PRIVATE
       ${CoreFoundation}
