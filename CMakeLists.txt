@@ -157,8 +157,16 @@ if(homebrew_cellar STREQUAL "/usr/local/Cellar")
 endif()
 
 if(APPLE AND NOT MIKTEX_HOMEBREW)
-    set(MIKTEX_MACOS_BUNDLE TRUE)
+    set(default_macos_bundle TRUE)
+else()
+    set(default_macos_bundle FALSE)
 endif()
+
+option(
+    MIKTEX_MACOS_BUNDLE
+    "Install into a macOS application bundle (MiKTeX Console.app)."
+    ${default_macos_bundle}
+)
 
 ###############################################################################
 ## handle install prefix standards
@@ -1100,7 +1108,7 @@ find_package(FLEX REQUIRED)
 #not needed: find_package(PythonInterp REQUIRED)
 find_package(Threads REQUIRED)
 
-if(MIKTEX_MACOS_BUNDLE)
+if(APPLE)
     find_library(CoreFoundation CoreFoundation)
 endif()
 
@@ -1890,6 +1898,14 @@ if(USE_SYSTEM_HARFBUZZ)
         IMPORTED_LOCATION "${HARFBUZZ_LIBRARY}"
         INTERFACE_INCLUDE_DIRECTORIES "${HARFBUZZ_INCLUDE_DIRS}"
     )
+    # the hb-subset API ships as a separate library in some harfbuzz
+    # distributions (e.g. Homebrew)
+    find_library(HARFBUZZ_SUBSET_LIBRARY NAMES harfbuzz-subset)
+    if(HARFBUZZ_SUBSET_LIBRARY)
+        set_property(TARGET MiKTeX::Imported::HARFBUZZ APPEND PROPERTY
+            INTERFACE_LINK_LIBRARIES "${HARFBUZZ_SUBSET_LIBRARY}"
+        )
+    endif()
 else()
     add_subdirectory(${MIKTEX_REL_HARFBUZZ_DIR})
 endif()

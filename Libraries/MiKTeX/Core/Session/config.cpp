@@ -94,6 +94,32 @@ MIKTEXSTATICFUNC(const ConfigMapping*) FindConfigMapping(const char* lpszConfigS
 }
 #endif
 
+#if defined(__APPLE__)
+// application bundles installed into a plain prefix:
+// <prefix>/<name>.app/Contents/MacOS => <prefix>
+static bool TryGetAppBundlePrefix(const PathName& bindir, PathName& prefix)
+{
+  string path = bindir.GetData();
+  const string suffix = "/Contents/MacOS";
+  if (path.length() <= suffix.length() + 5 || path.compare(path.length() - suffix.length(), suffix.length(), suffix) != 0)
+  {
+    return false;
+  }
+  string::size_type nameEnd = path.length() - suffix.length();
+  if (path.compare(nameEnd - 4, 4, ".app") != 0)
+  {
+    return false;
+  }
+  string::size_type slash = path.rfind('/', nameEnd - 5);
+  if (slash == string::npos || slash == 0)
+  {
+    return false;
+  }
+  prefix = path.substr(0, slash);
+  return true;
+}
+#endif
+
 PathName SessionImpl::GetMyPrefix(bool canonicalized)
 {
   PathName bindir = GetMyLocation(canonicalized);
@@ -116,6 +142,15 @@ PathName SessionImpl::GetMyPrefix(bool canonicalized)
       return prefix;
     }
   }
+#if defined(__APPLE__)
+  {
+    PathName appPrefix;
+    if (TryGetAppBundlePrefix(bindir, appPrefix))
+    {
+      return appPrefix;
+    }
+  }
+#endif
   MIKTEX_FATAL_ERROR_2("Cannot derive the path prefix of the running executable.", "bindir", bindir.ToString(), "canonicalized", canonicalized ? "true" : "false");
 }
 
@@ -145,6 +180,16 @@ pair<bool, PathName> SessionImpl::TryGetBinDirectory(bool canonicalized)
   return make_pair<bool, PathName>(true, PathName(env));
 #elif defined(MIKTEX_MACOS_BUNDLE)
   return make_pair<bool, PathName>(true, GetMyPrefix(canonicalized) / MIKTEX_BINARY_DESTINATION_DIR);
+#elif defined(__APPLE__)
+  {
+    PathName location = GetMyLocation(canonicalized);
+    PathName appPrefix;
+    if (TryGetAppBundlePrefix(location, appPrefix))
+    {
+      return make_pair<bool, PathName>(true, appPrefix / MIKTEX_BINARY_DESTINATION_DIR);
+    }
+    return make_pair<bool, PathName>(true, PathName(location));
+  }
 #else
   return make_pair<bool, PathName>(true, GetMyLocation(canonicalized));
 #endif

@@ -91,7 +91,7 @@ if(MIKTEX_NATIVE_WINDOWS)
     endif()
 endif()
 
-if(MIKTEX_MACOS_BUNDLE)
+if(APPLE)
     target_link_libraries(${core_lib_name}
         PUBLIC
             "-framework CoreServices"

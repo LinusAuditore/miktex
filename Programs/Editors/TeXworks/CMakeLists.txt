@@ -433,6 +433,37 @@ if(MIKTEX_MACOS_BUNDLE)
     set_target_properties(${MIKTEX_PREFIX}texworks PROPERTIES MACOSX_BUNDLE FALSE)
 endif()
 
+if(APPLE AND NOT MIKTEX_MACOS_BUNDLE)
+    # generate the application icon from the TeXworks logo PNG
+    set(tw_iconset_dir ${CMAKE_CURRENT_BINARY_DIR}/TeXworks.iconset)
+    set(tw_icns ${CMAKE_CURRENT_BINARY_DIR}/TeXworks.icns)
+    set(tw_icon_src ${CMAKE_CURRENT_SOURCE_DIR}/source/res/images/TeXworks.png)
+    add_custom_command(
+        OUTPUT ${tw_icns}
+        COMMAND ${CMAKE_COMMAND} -E make_directory ${tw_iconset_dir}
+        COMMAND sips -z 16 16 ${tw_icon_src} --out ${tw_iconset_dir}/icon_16x16.png
+        COMMAND sips -z 32 32 ${tw_icon_src} --out ${tw_iconset_dir}/icon_16x16@2x.png
+        COMMAND sips -z 32 32 ${tw_icon_src} --out ${tw_iconset_dir}/icon_32x32.png
+        COMMAND sips -z 64 64 ${tw_icon_src} --out ${tw_iconset_dir}/icon_32x32@2x.png
+        COMMAND sips -z 128 128 ${tw_icon_src} --out ${tw_iconset_dir}/icon_128x128.png
+        COMMAND sips -z 256 256 ${tw_icon_src} --out ${tw_iconset_dir}/icon_128x128@2x.png
+        COMMAND sips -z 256 256 ${tw_icon_src} --out ${tw_iconset_dir}/icon_256x256.png
+        COMMAND sips -z 512 512 ${tw_icon_src} --out ${tw_iconset_dir}/icon_256x256@2x.png
+        COMMAND sips -z 512 512 ${tw_icon_src} --out ${tw_iconset_dir}/icon_512x512.png
+        COMMAND iconutil -c icns -o ${tw_icns} ${tw_iconset_dir}
+        DEPENDS ${tw_icon_src}
+        VERBATIM
+    )
+    set_source_files_properties(${tw_icns} PROPERTIES
+        GENERATED TRUE
+        MACOSX_PACKAGE_LOCATION Resources
+    )
+    target_sources(${MIKTEX_PREFIX}texworks PRIVATE ${tw_icns})
+    set_target_properties(${MIKTEX_PREFIX}texworks PROPERTIES
+        MACOSX_BUNDLE_ICON_FILE TeXworks.icns
+    )
+endif()
+
 target_link_libraries(${MIKTEX_PREFIX}texworks ${libs})
 
 install(TARGETS ${MIKTEX_PREFIX}texworks DESTINATION ${MIKTEX_BINARY_DESTINATION_DIR})
