@@ -95,6 +95,12 @@ MIKTEXSTATICFUNC(void) CreateDirectoryPathWithMode(const PathName& path, mode_t 
   // create the directory itself
   if (mkdir(path.GetData(), mode) != 0)
   {
+    // another process may have created the directory concurrently
+    struct stat statbuf;
+    if (errno == EEXIST && stat(path.GetData(), &statbuf) == 0 && S_ISDIR(statbuf.st_mode))
+    {
+      return;
+    }
     MIKTEX_FATAL_CRT_ERROR_2("mkdir", "path", path.ToString());
   }
 }
