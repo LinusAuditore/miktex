@@ -41,7 +41,15 @@ jobs:
             -DWITH_UI_QT=TRUE
 
       - name: Build
-        run: cmake --build build -j"$(sysctl -n hw.ncpu)"
+        env:
+          # the bootstrapping downloads go through ctan.org's rotating
+          # mirrors; retry them, also on TLS errors (an expired mirror
+          # certificate once broke a run)
+          CURL_HOME: ${{ runner.temp }}/curl
+        run: |
+          mkdir -p "$CURL_HOME"
+          printf 'retry = 5\nretry-all-errors\n' > "$CURL_HOME/.curlrc"
+          cmake --build build -j"$(sysctl -n hw.ncpu)"
 
       - name: Test
         # serial: parallel ctest has known ordering flakes (see docs/macos-port/NOTES.md)
