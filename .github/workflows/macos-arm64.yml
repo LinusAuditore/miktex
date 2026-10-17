@@ -1,0 +1,59 @@
+name: macos-arm64
+
+on:
+  push:
+    branches: [mac_port]
+  workflow_dispatch:
+
+jobs:
+  build-dmg:
+    # arm64 (Apple Silicon) macOS runner
+    runs-on: macos-15
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          brew install pkg-config bison \
+            apr apr-util freetype fribidi gmp graphite2 hunspell jpeg-turbo \
+            libpng libzzip log4cxx mpfi mpfr pixman popt uriparser xz zlib \
+            bzip2 expat curl icu4c openssl@3 cairo fontconfig gd harfbuzz qt
+
+      - name: Configure
+        run: |
+          BREW="$(brew --prefix)"
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_PREFIX_PATH="$BREW;$BREW/opt/icu4c;$BREW/opt/openssl@3;$BREW/opt/bzip2;$BREW/opt/expat;$BREW/opt/curl;$BREW/opt/zlib" \
+            -DMIKTEX_MACOS_BUNDLE=TRUE \
+            -DWITH_UI_QT=TRUE
+
+      - name: Build
+        run: cmake --build build -j"$(sysctl -n hw.ncpu)"
+
+      - name: Test
+        # serial: parallel ctest has known ordering flakes (see docs/macos-port/NOTES.md)
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        run: |
+          cd build
+          cpack -G DragNDrop
+
+      - name: Verify
+        run: |
+          app=$(ls -d build/_CPack_Packages/Darwin/DragNDrop/miktex-*/MiKTeX\ Console.app)
+          file "$app/Contents/MacOS/MiKTeX Console"
+          codesign --verify --strict "$app"
+          shasum -a 256 build/*.dmg
+
+      - name: Upload dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: miktex-darwin-arm64-dmg
+          path: build/*.dmg
+          if-no-files-found: error
