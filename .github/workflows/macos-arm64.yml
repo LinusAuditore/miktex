@@ -1,0 +1,110 @@
+name: macos-arm64
+
+on:
+  push:
+    branches: [mac_port]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# a newer push to the branch supersedes a running build
+concurrency:
+  group: macos-arm64-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-dmg:
+    # arm64 (Apple Silicon) macOS runner
+    runs-on: macos-15
+    timeout-minutes: 120
+    env:
+      # reproducible toolchain: the formula versions of the runner image's
+      # Homebrew snapshot and the image's Xcode, no implicit upgrades
+      HOMEBREW_NO_AUTO_UPDATE: 1
+      HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          # bundle builds use the bundled cairo, fontconfig, gd and harfbuzz,
+          # the system bison and the SDK's apr; Qt: qtbase (Concurrent, Core,
+          # Gui, PrintSupport, Widgets, Xml), qttools (LinguistTools,
+          # UiTools), qtdeclarative (Qml), qt5compat (Core5Compat)
+          brew install pkg-config gettext boost \
+            freetype fribidi gmp graphite2 hunspell jpeg-turbo \
+            libpng libzzip log4cxx mpfi mpfr pixman popt uriparser xz zlib \
+            bzip2 expat curl icu4c openssl@3 \
+            qtbase qttools qtdeclarative qt5compat
+          brew list --versions cmake qtbase qttools qtdeclarative qt5compat openssl@3 openssl@4 curl | cat
+
+      - name: Configure
+        run: |
+          BREW="$(brew --prefix)"
+          cmake -S . -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_PREFIX_PATH="$BREW;$BREW/opt/icu4c;$BREW/opt/openssl@3;$BREW/opt/bzip2;$BREW/opt/expat;$BREW/opt/curl;$BREW/opt/zlib" \
+            -DOPENSSL_ROOT_DIR="$BREW/opt/openssl@3" \
+            -DMIKTEX_MACOS_BUNDLE=TRUE \
+            -DWITH_UI_QT=TRUE
+
+      - name: Build
+        env:
+          # the bootstrapping downloads go through ctan.org's rotating
+          # mirrors; retry them, also on TLS errors (an expired mirror
+          # certificate once broke a run)
+          CURL_HOME: ${{ runner.temp }}/curl
+        run: |
+          mkdir -p "$CURL_HOME"
+          printf 'retry = 5\nretry-all-errors\n' > "$CURL_HOME/.curlrc"
+          cmake --build build -j"$(sysctl -n hw.ncpu)"
+
+      - name: Test
+        # serial: parallel ctest has known ordering flakes (see docs/macos-port/NOTES.md)
+        run: ctest --test-dir build --output-on-failure
+
+      - name: Package
+        # guard against a hanging Finder layout script or hdiutil
+        timeout-minutes: 30
+        run: |
+          echo "=== tool versions ==="
+          brew list --versions cmake qtbase | cat
+          cmake --version | head -1
+          echo "=== Qt plugin link layout ==="
+          # a fresh Homebrew install links the plugins as per-file symlinks
+          # into the Cellar (see cmake/modules/InstallQtPlugin.cmake)
+          ls -ld "$(brew --prefix)/share/qt/plugins/platforms"
+          ls -l "$(brew --prefix)/share/qt/plugins/platforms/"
+          echo "=== cpack ==="
+          cd build
+          cpack -G DragNDrop
+
+      # always: the logs of a successful run show whether the sandbox tools
+      # raced while creating the file name database
+      - name: Upload sandbox logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-diagnostics
+          path: build/sandbox/miktex/log/
+          if-no-files-found: ignore
+          retention-days: 7
+
+      - name: Verify
+        # checks the final dmg: signature, arm64 only, no references outside
+        # the bundle; reports the effective minimum macOS version
+        timeout-minutes: 15
+        run: bash macos-port/ci/verify-dmg.sh build/miktex-*-darwin-arm64.dmg
+
+      - name: Upload dmg
+        uses: actions/upload-artifact@v4
+        with:
+          name: miktex-darwin-arm64-dmg
+          path: build/*.dmg
+          if-no-files-found: error
+          retention-days: 14

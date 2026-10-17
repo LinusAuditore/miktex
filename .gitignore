@@ -2,3 +2,38 @@
 /.vs
 /build
 /out
+
+# ---- macos-port additions ----
+
+/build/
+/build-*/
+/docs
+
+CMakeCache.txt
+CMakeFiles/
+CMakeUserPresets.json
+
+*.dmg
+*.app/
+*.dSYM/
+
+.DS_Store
+._*
+
+.vscode/
+.idea/
+*.xcodeproj/
+*.xcworkspace/
+.cache/
+compile_commands.json
+
+# *.aux
+# *.log
+# *.pdf
+
+# Claude Code 本地设置（不要提交个人配置）
+.claude/settings.local.json
+.zcode/
+
+AGENTS.md
+CLAUDE.md
