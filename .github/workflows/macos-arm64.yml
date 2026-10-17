@@ -16,6 +16,10 @@ jobs:
 
       - name: Install dependencies
         run: |
+          # refresh formulae: the runner image snapshot is older than the
+          # development environment (qt 6.11.2/cmake 4.4.3 vs 6.12.0/4.4.4);
+          # cmake 4.4.3 has a path-with-space bug in BundleUtilities
+          brew update
           brew install pkg-config bison gettext boost \
             apr apr-util freetype fribidi gmp graphite2 hunspell jpeg-turbo \
             libpng libzzip log4cxx mpfi mpfr pixman popt uriparser xz zlib \
