@@ -420,7 +420,7 @@ endif()
 add_executable(${MIKTEX_PREFIX}texworks WIN32 MACOSX_BUNDLE
     ${texworks_sources}
     ${texworks_ui_headers}
-    ${texworks_qm_sources}
+    ${texworks_rcc_sources}
     ${texworks_qm_files}
 )
 
