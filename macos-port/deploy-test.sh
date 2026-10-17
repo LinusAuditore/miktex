@@ -48,6 +48,21 @@ for tool in fc-cache; do
     fi
 done
 
+# Qt runtime bits: platform/style/image plugins must sit next to the
+# application bundle executables (Contents/PlugIns), otherwise GUI apps
+# cannot start on machines without Qt
+if [ -d /opt/homebrew/share/qt/plugins ]; then
+    find "$STAGING" -name '*.app' -type d | while read -r app; do
+        rm -rf "$app/Contents/PlugIns"
+        mkdir -p "$app/Contents/PlugIns"
+        for p in platforms styles imageformats; do
+            # -L: some plugin dirs are Homebrew symlinks into Cellar
+            cp -R -L "/opt/homebrew/share/qt/plugins/$p" "$app/Contents/PlugIns/" 2>/dev/null || true
+        done
+        echo "  + Qt plugins -> ${app#$STAGING/}/Contents/PlugIns"
+    done
+fi
+
 is_macho() {
     file -b "$1" | grep -q "Mach-O"
 }
@@ -83,6 +98,8 @@ resolve_dep() {
             [ -f "$LIBDIR/$leaf" ] && echo "$LIBDIR/$leaf" && return 0
             # then Homebrew, for not-yet-copied siblings of copied libraries
             [ -f "/opt/homebrew/lib/$leaf" ] && echo "/opt/homebrew/lib/$leaf" && return 0
+            # and the Qt frameworks (framework-to-framework references)
+            [ -f "/opt/homebrew/opt/qtbase/lib/$leaf" ] && echo "/opt/homebrew/opt/qtbase/lib/$leaf" && return 0
             return 1
             ;;
         /opt/homebrew/*|/usr/local/*)
@@ -121,6 +138,28 @@ process_file() {
             /opt/homebrew/*|/usr/local/*) ;;
             *) continue ;;  # resolves inside the tree already (e.g. staging lib)
         esac
+        if [[ "$resolved" == *.framework/* ]]; then
+            # Qt & friends: copy the whole framework bundle, reference
+            # the binary relative to the staging lib dir
+            local rel=${resolved#*/lib/}
+            local fwdir=${rel%%.framework/*}.framework
+            if [ ! -d "$LIBDIR/$fwdir" ]; then
+                # the framework directory itself may be a Homebrew
+                # symlink into Cellar; resolve it, but keep the bundle's
+                # internal symlinks (Versions/Current, root binary) intact
+                local srcfw
+                srcfw=$(realpath "${resolved%/$rel}/$fwdir")
+                rsync -a "$srcfw" "$LIBDIR/"
+                echo "  + $fwdir"
+            fi
+            local newfw="@rpath/$rel"
+            if [ "$dep" != "$newfw" ]; then
+                install_name_tool -change "$dep" "$newfw" "$f"
+                changed=1
+            fi
+            realpath "$LIBDIR/$rel" >> "$WORKLIST"
+            continue
+        fi
         leaf=$(basename "$resolved")
         if [ ! -e "$LIBDIR/$leaf" ]; then
             cp "$resolved" "$LIBDIR/$leaf"
@@ -167,16 +206,34 @@ while [ -s "$WORKLIST" ]; do
     fi
 done
 
-# rewrite install ids of copied libraries to @rpath/<leaf>
+# rewrite install ids of copied libraries to @rpath/<path relative to
+# the staging lib dir> (covers flat libraries and framework binaries)
 echo "==> normalizing install ids"
 find "$LIBDIR" -type f | while read -r f; do
     is_macho "$f" || continue
     id=$(otool -D "$f" | tail -n +2 | sed -e 's/^[[:space:]]*//' | head -1)
-    leaf=$(basename "$f")
-    if [ -n "$id" ] && [ "$id" != "@rpath/$leaf" ]; then
-        install_name_tool -id "@rpath/$leaf" "$f"
+    rel=${f#"$LIBDIR"/}
+    if [ -n "$id" ] && [ "$id" != "@rpath/$rel" ]; then
+        install_name_tool -id "@rpath/$rel" "$f"
         codesign --force --sign - "$f" >/dev/null 2>&1
     fi
+done
+
+# .app executables deep inside the tree need an rpath that reaches the
+# shared staging lib dir (the build-time @loader_path/../lib does not)
+echo "==> fixing .app rpaths"
+find "$STAGING" -name '*.app' -type d | while read -r app; do
+    find "$app/Contents/MacOS" -type f | while read -r exe; do
+        is_macho "$exe" || continue
+        reldepth=${app#"$STAGING"/}
+        ups=$(echo "$reldepth" | awk -F/ '{print NF + 2}')
+        rp="@executable_path/$(printf '../%.0s' $(seq 1 $ups))lib"
+        if ! otool -l "$exe" | grep -q "path $rp "; then
+            install_name_tool -add_rpath "$rp" "$exe"
+            codesign --force --sign - "$exe" >/dev/null 2>&1
+            echo "  rpath+ $rp"
+        fi
+    done
 done
 
 echo "==> self-check"
