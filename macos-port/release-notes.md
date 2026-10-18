@@ -53,9 +53,11 @@ still run TeX Live. To use MiKTeX's commands, put `~/bin` before
   so that `gs` is on `PATH`. Applications started from the Finder,
   TeXworks included, do not see `/opt/homebrew/bin` unless you add it to
   their search path.
-- **biber** is MiKTeX's `biber-darwin-x86_64` package, a universal binary
-  (download of about 71 MB). It is installed when biber runs for the first
-  time, or with the updates.
+- **biber** comes from MiKTeX's `biber-darwin-x86_64` package (download of
+  about 71 MB). Despite the name, its biber is a universal binary and runs
+  natively on Apple Silicon, without Rosetta. biber is an essential
+  package, so the first check for updates installs it, as on the other
+  platforms; otherwise it is installed when biber runs for the first time.
 - **xkeyval** is not installed on the fly: the package index of the MiKTeX
   repository lists no files for it at the moment. Packages that need it
   (for example glossaries) fail until you run
