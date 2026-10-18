@@ -538,7 +538,7 @@ void Application::Main(int argc, const char** argv)
     initInfo.SetProgramInvocationName(argv[0]);
 
     TriState optShared = TriState::Undetermined;
-#if defined(MIKTEX_WINDOWS)
+#if defined(MIKTEX_WINDOWS) || defined(MIKTEX_MACOS_BUNDLE)
     bool optModifyPath = true;
 #else
     bool optModifyPath = false;

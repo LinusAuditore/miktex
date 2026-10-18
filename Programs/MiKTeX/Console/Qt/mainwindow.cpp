@@ -782,6 +782,11 @@ bool FinishSetupWorker::Run()
     SetupOptions options = service->GetOptions();
     options.Task = SetupTask::FinishSetup;
     options.IsCommonSetup = session->IsAdminMode();
+#if defined(MIKTEX_MACOS_BUNDLE)
+    // a drag-and-drop installation has no installer which adds the link
+    // target directory to the PATH
+    options.IsRegisterPathEnabled = true;
+#endif
     options.Banner = "MiKTeX Console";
     options.Version = VersionNumber(MIKTEX_COMPONENT_VERSION_STR).ToString();
     options = service->SetOptions(options);

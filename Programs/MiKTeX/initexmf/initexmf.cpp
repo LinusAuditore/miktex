@@ -810,7 +810,7 @@ void IniTeXMFApp::RegisterRoots(const vector<PathName>& roots, bool other, bool 
 
 void IniTeXMFApp::ModifyPath()
 {
-#if defined(MIKTEX_WINDOWS)
+#if defined(MIKTEX_WINDOWS) || defined(MIKTEX_MACOS)
   Utils::CheckPath(true);
 #else
   // TODO: check path
