@@ -23,13 +23,16 @@
 
 #include "config.h"
 
+#include <algorithm>
 #include <fstream>
 
 #include <fmt/format.h>
 #include <fmt/ostream.h>
 
 #include <miktex/Core/Directory>
+#include <miktex/Core/DirectoryLister>
 #include <miktex/Core/Paths>
+#include <miktex/Core/Utils>
 #include <miktex/Util/PathNameParser>
 #include <miktex/Util/Tokenizer>
 
@@ -413,12 +416,48 @@ vector<string> SessionImpl::GetFontDirectories()
     }
 #elif defined(__APPLE__)
     // https://support.apple.com/en-us/HT201722
-    for (const string& dir : { "/Library/Fonts/"s, "/System/Library/Fonts/"s })
+    string home;
+    if (!IsAdminMode() && Utils::GetEnvironmentString("HOME", home) && !home.empty())
+    {
+      PathName userFontDir(home);
+      userFontDir /= "Library/Fonts";
+      if (Directory::Exists(userFontDir))
+      {
+        systemFontDirs.push_back(userFontDir.ToString());
+      }
+    }
+    for (const string& dir : { "/Library/Fonts/"s, "/Network/Library/Fonts/"s, "/System/Library/Fonts/"s })
     {
       if (Directory::Exists(PathName(dir)))
       {
         systemFontDirs.push_back(dir);
       }
+    }
+    // fonts which macOS installs as MobileAssets (e.g., PingFang SC, Kaiti SC)
+    // live in hashed subdirectories (*.asset/AssetData) of the font asset
+    // catalogs; fontconfig scans these subdirectories recursively
+    for (const string& assetsDir : { "/System/Library/AssetsV2"s, "/System/Library/AssetsV2/PreinstalledAssetsV2/InstallWithOs"s })
+    {
+      if (!Directory::Exists(PathName(assetsDir)))
+      {
+        continue;
+      }
+      vector<string> fontAssetDirs;
+      try
+      {
+        unique_ptr<DirectoryLister> lister = DirectoryLister::Open(PathName(assetsDir), "com_apple_MobileAsset_Font*", (int)DirectoryLister::Options::DirectoriesOnly);
+        DirectoryEntry entry;
+        while (lister->GetNext(entry))
+        {
+          fontAssetDirs.push_back((PathName(assetsDir) / entry.name).ToString());
+        }
+      }
+      catch (const MiKTeXException& e)
+      {
+        trace_fonts->WriteLine("core", fmt::format(T_("cannot list {0}: {1}"), Q_(assetsDir), e.GetErrorMessage()));
+      }
+      sort(fontAssetDirs.begin(), fontAssetDirs.end());
+      systemFontDirs.insert(systemFontDirs.end(), fontAssetDirs.begin(), fontAssetDirs.end());
     }
 #endif
   }
