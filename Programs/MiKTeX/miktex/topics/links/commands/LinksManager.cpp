@@ -222,6 +222,17 @@ vector<FileLink> LinksManager::CollectLinks(LinkCategoryOptions linkCategories)
 #if defined(MIKTEX_MACOS_BUNDLE)
     PathName console(ctx->session->GetSpecialPath(SpecialPath::MacOsDirectory) / MIKTEX_MACOS_BUNDLE_NAME);
     links.push_back(FileLink(console.ToString(), { MIKTEX_CONSOLE_EXE }, LinkType::Symbolic));
+    // a copy of a bundle executable cannot run outside the bundle: it loads its
+    // libraries from @executable_path/../miktex-lib and derives the installation
+    // prefix from its own location; a symbolic link resolves to the bundle, and
+    // the One MiKTeX Utility shims (mktexlsr, texhash, ...) dispatch on argv[0]
+    for (FileLink& fileLink : links)
+    {
+      if (fileLink.linkType == LinkType::Copy)
+      {
+        fileLink.linkType = LinkType::Symbolic;
+      }
+    }
 #endif
     for (const FileLink& fileLink : links)
     {
