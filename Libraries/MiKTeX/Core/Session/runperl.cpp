@@ -79,15 +79,26 @@ int SessionImpl::RunScript(const string &scriptEngine, const vector<string> &las
 
     string name = GetScriptName(PathName(argv[0]));
 
+    string scriptEngineProgram = scriptEngine;
     PathName scriptEnginePath;
-    if (!Utils::FindProgram(scriptEngine, scriptEnginePath))
+    bool haveScriptEngine = Utils::FindProgram(scriptEngineProgram, scriptEnginePath);
+#if defined(MIKTEX_MACOS)
+    // since macOS 12.3 there is no 'python', only 'python3'; the same
+    // holds for the Python installed by Homebrew or from python.org
+    if (!haveScriptEngine && scriptEngine == "python")
+    {
+        scriptEngineProgram = "python3";
+        haveScriptEngine = Utils::FindProgram(scriptEngineProgram, scriptEnginePath);
+    }
+#endif
+    if (!haveScriptEngine)
     {
         MIKTEX_FATAL_ERROR_5(
             T_("The script engine could not be found."),
             T_("MiKTeX could not find the script engine '{scriptEngine}' which is required to execute '{scriptName}'."),
             T_("Make sure '{scriptEngine}' is installed on your system."),
             "script-engine-not-found",
-            "scriptEngine", scriptEngine,
+            "scriptEngine", scriptEngineProgram,
             "scriptName", name);
     }
 
@@ -105,7 +116,7 @@ int SessionImpl::RunScript(const string &scriptEngine, const vector<string> &las
 #if defined(MIKTEX_WINDOWS)
     args.push_back(isCmd ? scriptEnginePath.ToString() : scriptEngine);
 #else
-    args.push_back(scriptEngine);
+    args.push_back(scriptEngineProgram);
 #endif
 
     if (!scriptEngineOptions.empty())
