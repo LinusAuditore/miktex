@@ -1097,7 +1097,14 @@ void TWApp::setDefaultPaths()
 #if defined(MIKTEX)
           {
             auto session = MIKTEX_SESSION();
+#if defined(MIKTEX_MACOS_BUNDLE)
+            // the MiKTeX programs (and TeXworks itself) live in the
+            // application bundle (Contents/bin); there is no
+            // InstallRoot/miktex/bin/<tag> directory
+            MiKTeX::Util::PathName d = session->GetSpecialPath(MiKTeX::Configuration::SpecialPath::BinDirectory);
+#else
             MiKTeX::Util::PathName d = session->GetSpecialPath(MiKTeX::Configuration::SpecialPath::InstallRoot) / MIKTEX_PATH_BIN_DIR;
+#endif
             QString dir = QString::fromUtf8(d.GetData());
             if (!binaryPaths->contains(dir))
             {
