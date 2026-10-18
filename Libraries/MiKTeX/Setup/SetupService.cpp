@@ -1421,10 +1421,23 @@ void SetupServiceImpl::ConfigureMiKTeX()
     }
 
     // set auto-install
+    TriState autoInstall = options.IsInstallOnTheFlyEnabled;
+#if defined(MIKTEX_MACOS_BUNDLE)
+    // Nothing in the app bundle lets the user choose before this point
+    // (miktexsetup has no option for it, MiKTeX Console does not set it),
+    // and "ask" makes command-line engines wait for a Qt dialog, which
+    // cannot be answered when there is no GUI session (SSH, CI). Install
+    // missing packages on-the-fly; the user can still pick "ask" in
+    // MiKTeX Console.
+    if (autoInstall == TriState::Undetermined)
+    {
+        autoInstall = TriState::True;
+    }
+#endif
     string valueSpec = "["s + MIKTEX_CONFIG_SECTION_MPM + "]";
     valueSpec += MIKTEX_CONFIG_VALUE_AUTOINSTALL;
     valueSpec += "=";
-    valueSpec += std::to_string((int)options.IsInstallOnTheFlyEnabled);
+    valueSpec += std::to_string((int)autoInstall);
     RunIniTeXMF({ "--set-config-value=" + valueSpec }, false);
 
     if (options.Task != SetupTask::PrepareMiKTeXDirect)
