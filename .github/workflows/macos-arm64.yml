@@ -3,6 +3,9 @@ name: macos-arm64
 on:
   push:
     branches: [mac_port]
+    # an unofficial release: <MiKTeX version>-unofficial.<n>, e.g.
+    # 26.5-unofficial.1
+    tags: ['*-unofficial.*']
   workflow_dispatch:
 
 permissions:
@@ -27,6 +30,8 @@ jobs:
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
       # the minimum macOS version of the dmg (deployment target and check)
       MACOS_MIN_VERSION: "26.0"
+      # the fork's builds are unofficial: say so in the volume name
+      DMG_VOLUME_NAME: "MiKTeX (unofficial)"
 
     steps:
       - uses: actions/checkout@v4
@@ -55,6 +60,31 @@ jobs:
             -DOPENSSL_ROOT_DIR="$BREW/opt/openssl@3" \
             -DMIKTEX_MACOS_BUNDLE=TRUE \
             -DWITH_UI_QT=TRUE
+
+      - name: Name the release
+        # the fork's builds are unofficial; a release tag must match the
+        # MiKTeX version of the sources
+        run: |
+          base=$(sed -n 's/^set(CPACK_PACKAGE_FILE_NAME "\(.*\)")$/\1/p' build/CPackConfig.cmake)
+          version=${base#miktex-}
+          version=${version%-darwin-arm64}
+          if [ -z "$version" ] || [ "$base" != "miktex-$version-darwin-arm64" ]; then
+            echo "::error::unexpected package file name: $base"
+            exit 1
+          fi
+          if [ "$GITHUB_REF_TYPE" = tag ]; then
+            case "$GITHUB_REF_NAME" in
+              "$version"-unofficial.*) release=$GITHUB_REF_NAME ;;
+              *)
+                echo "::error::tag $GITHUB_REF_NAME does not match $version-unofficial.<n>"
+                exit 1
+                ;;
+            esac
+          else
+            release=$version-unofficial
+          fi
+          echo "MIKTEX_RELEASE=$release" >> "$GITHUB_ENV"
+          echo "release: $release"
 
       - name: Build
         env:
@@ -85,7 +115,9 @@ jobs:
           ls -l "$(brew --prefix)/share/qt/plugins/platforms/"
           echo "=== cpack ==="
           cd build
-          cpack -G DragNDrop
+          cpack -G DragNDrop \
+            -D CPACK_PACKAGE_FILE_NAME="miktex-$MIKTEX_RELEASE-darwin-arm64" \
+            -D CPACK_DMG_VOLUME_NAME="$DMG_VOLUME_NAME"
 
       # always: the logs of a successful run show whether the sandbox tools
       # raced while creating the file name database
@@ -99,11 +131,13 @@ jobs:
           retention-days: 7
 
       - name: Verify
-        # checks the final dmg: signature, arm64 only, no references outside
-        # the bundle; the effective minimum macOS version must not be higher
-        # than MACOS_MIN_VERSION
+        # checks the final dmg: file and volume name, signature, arm64 only,
+        # no references outside the bundle; the effective minimum macOS
+        # version must not be higher than MACOS_MIN_VERSION
         timeout-minutes: 15
-        run: bash macos-port/ci/verify-dmg.sh build/miktex-*-darwin-arm64.dmg "$MACOS_MIN_VERSION"
+        run: |
+          bash macos-port/ci/verify-dmg.sh "build/miktex-$MIKTEX_RELEASE-darwin-arm64.dmg" \
+            "$MACOS_MIN_VERSION" "$DMG_VOLUME_NAME"
 
       - name: Upload dmg
         uses: actions/upload-artifact@v4
@@ -112,3 +146,51 @@ jobs:
           path: build/*.dmg
           if-no-files-found: error
           retention-days: 14
+
+  release:
+    # a release tag makes a draft release; a maintainer reviews and
+    # publishes it
+    if: github.ref_type == 'tag'
+    needs: build-dmg
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: macos-port
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: miktex-darwin-arm64-dmg
+          path: dist
+
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # gh does not check for an existing draft; a re-run must not
+          # create a second release for the same tag
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --json tagName > /dev/null 2>&1; then
+            echo "::error::a release (or draft) for $GITHUB_REF_NAME exists; delete it before re-running"
+            exit 1
+          fi
+          cd dist
+          sha256sum -- *.dmg > SHA256SUMS
+          {
+            cat ../macos-port/release-notes.md
+            echo
+            echo "## SHA-256"
+            echo
+            echo '```'
+            cat SHA256SUMS
+            echo '```'
+            echo
+            echo "Built from commit $GITHUB_SHA."
+          } > notes.md
+          gh release create "$GITHUB_REF_NAME" miktex-*.dmg SHA256SUMS \
+            --repo "$GITHUB_REPOSITORY" \
+            --draft \
+            --verify-tag \
+            --title "MiKTeX $GITHUB_REF_NAME for Apple Silicon (unofficial build)" \
+            --notes-file notes.md
