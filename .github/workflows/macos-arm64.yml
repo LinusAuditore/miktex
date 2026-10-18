@@ -25,6 +25,8 @@ jobs:
       HOMEBREW_NO_AUTO_UPDATE: 1
       HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
       DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
+      # the minimum macOS version of the dmg (deployment target and check)
+      MACOS_MIN_VERSION: "26.0"
 
     steps:
       - uses: actions/checkout@v4
@@ -48,7 +50,7 @@ jobs:
           cmake -S . -B build -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=arm64 \
-            -DCMAKE_OSX_DEPLOYMENT_TARGET=12.0 \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOS_MIN_VERSION" \
             -DCMAKE_PREFIX_PATH="$BREW;$BREW/opt/icu4c;$BREW/opt/openssl@3;$BREW/opt/bzip2;$BREW/opt/expat;$BREW/opt/curl;$BREW/opt/zlib" \
             -DOPENSSL_ROOT_DIR="$BREW/opt/openssl@3" \
             -DMIKTEX_MACOS_BUNDLE=TRUE \
@@ -98,9 +100,10 @@ jobs:
 
       - name: Verify
         # checks the final dmg: signature, arm64 only, no references outside
-        # the bundle; reports the effective minimum macOS version
+        # the bundle; the effective minimum macOS version must not be higher
+        # than MACOS_MIN_VERSION
         timeout-minutes: 15
-        run: bash macos-port/ci/verify-dmg.sh build/miktex-*-darwin-arm64.dmg
+        run: bash macos-port/ci/verify-dmg.sh build/miktex-*-darwin-arm64.dmg "$MACOS_MIN_VERSION"
 
       - name: Upload dmg
         uses: actions/upload-artifact@v4

@@ -1,17 +1,29 @@
 #!/bin/bash
 # Verify the MiKTeX disk image produced by CPack (fork CI only).
 #
-# usage: verify-dmg.sh <dmg>
+# usage: verify-dmg.sh <dmg> [<max-min-version>]
 #
 # Mounts the image read-only and checks the application bundle in it:
 # code signature, arm64-only Mach-O files, no load commands or rpaths that
 # point outside the bundle (Homebrew, /usr/local, home/build directories).
 # Prints the distribution of minimum macOS versions (minos) of all Mach-O
-# files; the highest one is the effective minimum system version.
+# files; the highest one is the effective minimum system version. If
+# <max-min-version> (e.g. 26.0) is given, the effective minimum system
+# version must not be higher, and the application's LSMinimumSystemVersion
+# must be equal to it.
 
 set -euo pipefail
 
+if [ $# -lt 1 ] || [ $# -gt 2 ]; then
+  echo "usage: verify-dmg.sh <dmg> [<max-min-version>]" >&2
+  exit 2
+fi
 dmg=$1
+max_min_version=${2:-}
+if [ -n "$max_min_version" ] && ! [[ $max_min_version =~ ^[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
+  echo "verify-dmg.sh: <max-min-version> must look like 26.0: $max_min_version" >&2
+  exit 2
+fi
 work=$(mktemp -d)
 mnt="$work/mnt"
 mkdir "$mnt"
@@ -73,6 +85,23 @@ done < <(find "$app" -type f -print0)
 echo "Mach-O files: $count"
 echo "minos distribution:"
 sort -V "$work/minos.txt" | uniq -c
-echo "effective minimum macOS version: $(sort -V "$work/minos.txt" | tail -1)"
+effective=$(sort -V "$work/minos.txt" | tail -1)
+echo "effective minimum macOS version: $effective"
+if [ -z "$effective" ]; then
+  echo "::error::no minimum macOS version (minos) found"
+  bad=1
+elif [ -n "$max_min_version" ] \
+  && [ "$(printf '%s\n%s\n' "$max_min_version" "$effective" | sort -V | tail -1)" != "$max_min_version" ]; then
+  echo "::error::effective minimum macOS version $effective is higher than $max_min_version"
+  bad=1
+fi
+if [ -n "$max_min_version" ]; then
+  ls_min_version=$(/usr/libexec/PlistBuddy -c 'Print :LSMinimumSystemVersion' "$app/Contents/Info.plist" 2>/dev/null || true)
+  echo "LSMinimumSystemVersion: $ls_min_version"
+  if [ "$ls_min_version" != "$max_min_version" ]; then
+    echo "::error::LSMinimumSystemVersion is '$ls_min_version', expected $max_min_version"
+    bad=1
+  fi
+fi
 
 exit $bad
