@@ -1,11 +1,11 @@
 # MiKTeX for Apple Silicon (unofficial build)
 
 **This is not an official MiKTeX release.** It is built from the branch
-[`mac_port`](https://github.com/LinusAuditore/miktex/tree/mac_port) of the
-fork LinusAuditore/miktex, which ports MiKTeX to native Apple Silicon. The
+[`mac_port`](https://github.com/LinusAuditore/miktex-macos-unofficial/tree/mac_port) of the
+fork LinusAuditore/miktex-macos-unofficial, which ports MiKTeX to native Apple Silicon. The
 MiKTeX project does not build, sign or support it. Please report problems
 with this build in the fork's
-[issue tracker](https://github.com/LinusAuditore/miktex/issues), not to the
+[issue tracker](https://github.com/LinusAuditore/miktex-macos-unofficial/issues), not to the
 MiKTeX project. Inside the application it still calls itself MiKTeX
 Console, with MiKTeX's version number.
 
@@ -90,7 +90,7 @@ still run TeX Live. To use MiKTeX's commands, put `~/bin` before
 ## Changes from MiKTeX
 
 The source differences are on
-[GitHub](https://github.com/MiKTeX/miktex/compare/next...LinusAuditore:miktex:mac_port).
+[GitHub](https://github.com/MiKTeX/miktex/compare/next...LinusAuditore:miktex-macos-unofficial:mac_port).
 Besides build and packaging fixes for Apple Silicon, this build behaves
 differently from upstream MiKTeX in these ways:
 

@@ -4,7 +4,7 @@
 > of [MiKTeX/miktex](https://github.com/MiKTeX/miktex) that builds MiKTeX
 > natively for Macs with Apple Silicon. It is not affiliated with or
 > endorsed by the MiKTeX project. Please report problems with these builds
-> [here](https://github.com/LinusAuditore/miktex/issues), not to the MiKTeX
+> [here](https://github.com/LinusAuditore/miktex-macos-unofficial/issues), not to the MiKTeX
 > project.
 
 The official MiKTeX package for macOS is still version 22.1 for Intel Macs;
@@ -15,7 +15,7 @@ meant as a separate distribution in the long run.
 
 ## Download
 
-Disk images are on the [Releases](https://github.com/LinusAuditore/miktex/releases)
+Disk images are on the [Releases](https://github.com/LinusAuditore/miktex-macos-unofficial/releases)
 page. They need:
 
 - a Mac with Apple Silicon
