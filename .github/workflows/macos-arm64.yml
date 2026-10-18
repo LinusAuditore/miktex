@@ -6,6 +6,11 @@ on:
     # an unofficial release: <MiKTeX version>-unofficial.<n>, e.g.
     # 26.5-unofficial.1
     tags: ['*-unofficial.*']
+    # the fork's documents do not need a build (tag pushes ignore this;
+    # COPYING.md is part of the dmg, so not all .md files are listed)
+    paths-ignore:
+      - .github/README.md
+      - macos-port/release-notes.md
   workflow_dispatch:
 
 permissions:
