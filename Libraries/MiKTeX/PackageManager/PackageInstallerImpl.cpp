@@ -433,7 +433,7 @@ void PackageInstallerImpl::FindUpdatesNoLock()
 
 #if IGNORE_OTHER_SYSTEMS
         string targetSystem = repositoryManifest.GetPackageTargetSystem(packageId);
-        bool isOtherTargetSystem = !(targetSystem.empty() || targetSystem == MIKTEX_SYSTEM_TAG);
+        bool isOtherTargetSystem = !(targetSystem.empty() || targetSystem == MIKTEX_SYSTEM_TAG || IsFallbackTargetSystem(targetSystem));
         if (isOtherTargetSystem)
         {
             continue;
@@ -627,7 +627,7 @@ void PackageInstallerImpl::FindUpgradesNoLock(PackageLevel packageLevel)
         }
 #if IGNORE_OTHER_SYSTEMS
         string targetSystem = repositoryManifest.GetPackageTargetSystem(packageId);
-        if (!targetSystem.empty() && targetSystem != MIKTEX_SYSTEM_TAG)
+        if (!targetSystem.empty() && targetSystem != MIKTEX_SYSTEM_TAG && !IsFallbackTargetSystem(targetSystem))
         {
             continue;
         }
@@ -1119,6 +1119,31 @@ void PackageInstallerImpl::InstallPackage(const string& packageId, Cfg& packageM
 
     // get new package info
     PackageInfo newPackage = tpmparser->GetPackageInfo();
+
+#if defined(MIKTEX_FALLBACK_SYSTEM_TAG)
+    // make the programs of a package for the fallback system executable:
+    // the extractor does not restore file modes, and the post-processing
+    // and "miktex links install" only look for the [exe] programs of
+    // scripts.ini in the directories of MIKTEX_SYSTEM_TAG
+    if (IsFallbackTargetSystem(newPackage.targetSystem))
+    {
+        string executablesDir = string("executables/") + MIKTEX_FALLBACK_SYSTEM_TAG + "/";
+        for (const string& s : newPackage.runFiles)
+        {
+            string fileName;
+            string rest;
+            if (!PackageManager::StripTeXMFPrefix(s, fileName) || !StripPrefix(fileName, executablesDir.c_str(), rest))
+            {
+                continue;
+            }
+            PathName path = session->GetSpecialPath(SpecialPath::InstallRoot) / fileName;
+            if (File::Exists(path))
+            {
+                File::SetAttributes(path, File::GetAttributes(path) + FileAttribute::Executable);
+            }
+        }
+    }
+#endif
 
     // install new package manifest
     PackageManager::PutPackageManifest(packageManifests, newPackage, newPackage.timePackaged);
@@ -1679,7 +1704,7 @@ void PackageInstallerImpl::InstallRemove(Role role)
 #if IGNORE_OTHER_SYSTEMS
                 // check target system
                 string targetSystem = repositoryManifest.GetPackageTargetSystem(packageId);
-                if (!(targetSystem.empty() || targetSystem == MIKTEX_SYSTEM_TAG))
+                if (!(targetSystem.empty() || targetSystem == MIKTEX_SYSTEM_TAG || IsFallbackTargetSystem(targetSystem)))
                 {
                     continue;
                 }

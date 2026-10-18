@@ -135,6 +135,13 @@ endif()
 
 set(MIKTEX_TARGET_SYSTEM_TAG "${MIKTEX_TARGET_SYSTEM_NAME}-${MIKTEX_TARGET_SYSTEM_CPU}")
 
+if(APPLE AND MIKTEX_TARGET_SYSTEM_TAG STREQUAL "darwin-arm64")
+    # The package repository has no darwin-arm64 packages.  The
+    # executables of the darwin-x86_64 packages (biber, biber-ms) are
+    # universal binaries, which run natively on darwin-arm64.
+    set(MIKTEX_FALLBACK_SYSTEM_TAG "darwin-x86_64")
+endif()
+
 if(MIKTEX_NATIVE_WINDOWS)
   set(MIKTEX_MIN_TARGET_SYSTEM_VERSION "6.1.7601")
 endif()

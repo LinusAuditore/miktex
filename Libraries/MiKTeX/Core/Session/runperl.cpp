@@ -39,6 +39,37 @@ string GetScriptName(const PathName& path)
     return path.GetFileName().ToString();
 }
 
+#if defined(MIKTEX_FALLBACK_SYSTEM_TAG)
+// Expands script records for the fallback system.
+class FallbackSystemCallback :
+    public MiKTeX::Configuration::HasNamedValues
+{
+public:
+    bool TryGetValue(const string& valueName, string& value) override
+    {
+        if (valueName == "MIKTEX_SYSTEM_TAG")
+        {
+            value = MIKTEX_FALLBACK_SYSTEM_TAG;
+            return true;
+        }
+        else if (valueName == "MIKTEX_EXE_FILE_SUFFIX")
+        {
+            value = MIKTEX_EXE_FILE_SUFFIX;
+            return true;
+        }
+        else
+        {
+            return false;
+        }
+    }
+public:
+    string GetValue(const string& valueName) override
+    {
+        UNIMPLEMENTED();
+    }
+};
+#endif
+
 tuple<PathName, vector<string>, vector<string>> SessionImpl::GetScript(const string &scriptEngine, const string &name)
 {
     PathName scriptsIni;
@@ -55,7 +86,21 @@ tuple<PathName, vector<string>, vector<string>> SessionImpl::GetScript(const str
     }
     string relScriptPath = Expand(value);
     PathName scriptPath;
-    if (!FindFile(relScriptPath, MIKTEX_PATH_TEXMF_PLACEHOLDER, scriptPath))
+    bool found = FindFile(relScriptPath, MIKTEX_PATH_TEXMF_PLACEHOLDER, scriptPath);
+#if defined(MIKTEX_FALLBACK_SYSTEM_TAG)
+    if (!found)
+    {
+        // e.g., biber: the universal binary is in the package for the
+        // fallback system
+        FallbackSystemCallback fallbackSystem;
+        string fallbackRelScriptPath = Expand(value, &fallbackSystem);
+        if (fallbackRelScriptPath != relScriptPath)
+        {
+            found = FindFile(fallbackRelScriptPath, MIKTEX_PATH_TEXMF_PLACEHOLDER, scriptPath);
+        }
+    }
+#endif
+    if (!found)
     {
         MIKTEX_FATAL_ERROR_2(T_("The program '{name}' could not be found."), "engine", scriptEngine, "name", name, "path", relScriptPath);
     }

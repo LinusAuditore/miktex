@@ -27,6 +27,7 @@
 #include <string>
 
 #include <miktex/Util/PathName>
+#include <miktex/Util/StringUtil>
 #include <miktex/Core/Paths>
 #include <miktex/Core/Session>
 #include <miktex/Core/VersionNumber>
@@ -120,6 +121,17 @@ inline int StrCmp(const wchar_t* lpsz1, const wchar_t* lpsz2)
 inline bool IsNewer(const MiKTeX::Util::PathName& path1, const MiKTeX::Util::PathName& path2)
 {
   return MiKTeX::Core::File::Exists(path1) && MiKTeX::Core::File::Exists(path2) && MiKTeX::Core::File::GetLastWriteTime(path1) > MiKTeX::Core::File::GetLastWriteTime(path2);
+}
+
+/// Checks whether a package for the given target systems can be used
+/// because it is for the fallback system (see MIKTEX_FALLBACK_SYSTEM_TAG).
+inline bool IsFallbackTargetSystem(const std::string& targetSystems)
+{
+#if defined(MIKTEX_FALLBACK_SYSTEM_TAG)
+  return MiKTeX::Util::StringUtil::Contains(targetSystems, MIKTEX_FALLBACK_SYSTEM_TAG);
+#else
+  return false;
+#endif
 }
 
 bool IsUrl(const std::string& url);

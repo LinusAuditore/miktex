@@ -31,6 +31,9 @@
 
 #define MIKTEX_SYSTEM_TAG "${MIKTEX_TARGET_SYSTEM_TAG}"
 
+/* packages and executables for this system can be used, too */
+#cmakedefine MIKTEX_FALLBACK_SYSTEM_TAG "${MIKTEX_FALLBACK_SYSTEM_TAG}"
+
 #if !defined(EAD86981C92C904D808A5E6CEC64B90E)
 #  if defined(MIKTEX_CORE_SHARED)
 #    define MIKTEXCOREEXPORT MIKTEXDLLIMPORT
