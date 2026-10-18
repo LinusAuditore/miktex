@@ -15,15 +15,16 @@ concurrency:
 
 jobs:
   build-dmg:
-    # arm64 (Apple Silicon) macOS runner
-    runs-on: macos-15
+    # arm64 (Apple Silicon) macOS runner; macOS 26 is the minimum system
+    # version of the fork's builds
+    runs-on: macos-26
     timeout-minutes: 120
     env:
       # reproducible toolchain: the formula versions of the runner image's
       # Homebrew snapshot and the image's Xcode, no implicit upgrades
       HOMEBREW_NO_AUTO_UPDATE: 1
       HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
-      DEVELOPER_DIR: /Applications/Xcode_16.4.app/Contents/Developer
+      DEVELOPER_DIR: /Applications/Xcode_26.6.app/Contents/Developer
 
     steps:
       - uses: actions/checkout@v4
